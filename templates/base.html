@@ -1,46 +1,160 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ title or "Prediagnóstico Empresarial" }}</title>
+    <meta name="theme-color" content="#4f46e5"> <title>{{ title or "Consilium | Diagnóstico Empresarial" }}</title>
+    
     <link rel="stylesheet" href="{{ url_for('static', filename='output.css') }}" />
+    <link rel="icon" href="{{ url_for('static', filename='logos/Icono_Consilium.jpg') }}" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
       body { font-family: 'Inter', sans-serif; }
+      /* Animación suave para las alertas */
+      .flash-enter { animation: slideDown 0.4s ease-out forwards; }
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @media print {
+        @page { size: A4; margin: 12mm; }
+
+        html, body { background: #fff !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        header, footer, nav, .no-print { display: none !important; }
+
+        main {
+          max-width: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
+        * { animation: none !important; transition: none !important; }
+
+        .print-pagebreak { break-before: page; page-break-before: always; }
+        .print-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+
+        .print-grid { grid-template-columns: 1fr !important; }
+
+        .print-dark-card {
+          background: #fff !important;
+          color: #0f172a !important;
+          border: 1px solid #e2e8f0 !important;
+          box-shadow: none !important;
+        }
+        .print-dark-card * { color: inherit !important; }
+        .print-subcard {
+          background: #f8fafc !important;
+          border: 1px solid #e2e8f0 !important;
+        }
+
+        .print-card {
+          box-shadow: none !important;
+          border-color: #e2e8f0 !important;
+        }
+
+        svg.radar-svg { max-width: 100% !important; height: auto !important; }
+        svg.radar-svg text { font-size: 11px !important; }
+      }
     </style>
   </head>
-  <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
-    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <div class="flex items-center gap-2">
-          <div class="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-indigo-200 shadow-lg">
-            <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+  
+  <body class="flex flex-col min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-indigo-100 selection:text-indigo-700">
+    
+    <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md transition-all">
+      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        
+        <div class="flex items-center gap-4">
+          <a class="flex-shrink-0 transition-opacity hover:opacity-80" href="{{ url_for('index') }}">
+            <img
+              src="{{ url_for('static', filename='logos/Consilium-rec.png') }}"
+              alt="Consilium Logo"
+              class="h-25 w-auto mix-blend-multiply" 
+              loading="eager"
+            />
+          </a>
+          
+          <div class="hidden h-8 w-px bg-slate-200 sm:block"></div>
+          
+          <div class="hidden flex-col sm:flex">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-600">
+              Diagnóstico
+            </span>
+            <span class="text-xs font-medium text-slate-500">
+              Empresarial v1.0
+            </span>
           </div>
-          <span class="text-xl font-bold tracking-tight text-slate-800">Planeta<span class="text-indigo-600">Fiscal</span></span>
         </div>
-        <nav class="flex items-center gap-6">
-          <a class="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors" href="{{ url_for('index') }}">Cuestionario</a>
-          <a class="text-sm font-semibold text-rose-600 hover:text-rose-700" href="{{ url_for('reset') }}">Reiniciar</a>
+
+        <nav class="flex items-center gap-4 sm:gap-6">
+          <a class="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors" href="{{ url_for('cuestionario') }}">
+            Cuestionario
+          </a>
+          
+          <a href="{{ url_for('reset') }}" class="group relative inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-1.5 text-xs font-bold text-rose-600 transition-all hover:bg-rose-100 hover:pr-6 hover:shadow-sm ring-1 ring-rose-100 border border-rose-200/50">
+            <span>Reiniciar</span>
+            <svg class="absolute right-2 w-3 h-3 opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </a>
         </nav>
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-5xl px-6 py-12">
+    <main class="flex-grow mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-8 space-y-2">
+            {% for category, message in messages %}
+              <div class="flash-enter flex items-center gap-3 rounded-xl border p-4 shadow-sm 
+                {% if category == 'error' %} border-rose-200 bg-rose-50 text-rose-800
+                {% elif category == 'success' %} border-emerald-200 bg-emerald-50 text-emerald-800
+                {% else %} border-blue-200 bg-blue-50 text-blue-800 {% endif %}">
+                
+                {% if category == 'error' %}
+                  <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {% elif category == 'success' %}
+                   <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {% else %}
+                   <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                {% endif %}
+
+                <span class="text-sm font-semibold">{{ message }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
       {% if flash_error %}
-        <div class="mb-8 flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 shadow-sm">
+        <div class="flash-enter mb-8 flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800 shadow-sm">
+          <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
           <span class="text-sm font-semibold">{{ flash_error }}</span>
         </div>
       {% endif %}
+
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="mx-auto w-full max-w-5xl px-6 pb-12 text-center">
-      <p class="text-sm text-slate-400 font-medium italic">Análisis de madurez digital y estratégica para PyMEs</p>
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto w-full max-w-6xl px-4 py-8 text-center sm:px-6 lg:px-8">
+        <p class="text-sm font-medium text-slate-500">
+          &copy; <span id="year"></span> Consilium. <span class="text-slate-400">Diagnóstico de madurez y gestión para PyMEs.</span>
+        </p>
+      </div>
     </footer>
+
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+    
+    {% block scripts %}{% endblock %}
   </body>
 </html>

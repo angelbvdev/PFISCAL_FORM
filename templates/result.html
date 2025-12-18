@@ -1,44 +1,99 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="space-y-10 animate-in fade-in duration-700">
+<style>
+  /* Animación de entrada */
+  .fade-up { animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(20px); }
+  .delay-100 { animation-delay: 0.1s; }
+  .delay-200 { animation-delay: 0.2s; }
+  .delay-300 { animation-delay: 0.3s; }
   
-  <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm flex flex-col md:flex-row gap-8 items-center">
-    <div class="flex-shrink-0 relative h-32 w-32">
-      <svg class="h-32 w-32 transform -rotate-90">
-        <circle cx="64" cy="64" r="58" stroke="#f1f5f9" stroke-width="12" fill="transparent" />
-        <circle cx="64" cy="64" r="58" stroke="#4f46e5" stroke-width="12" fill="transparent" 
-          stroke-dasharray="364.4" stroke-dashoffset="{{ 364.4 - (364.4 * total_pct / 100) }}" 
-          stroke-linecap="round" />
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+  /* OPTIMIZACIÓN PARA IMPRESIÓN (PDF) */
+  @media print {
+    @page { margin: 1.5cm; size: portrait; }
+    body { background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    header, nav, footer, .no-print { display: none !important; }
+    .print-break-inside-avoid { break-inside: avoid; }
+    .print-text-black { color: black !important; }
+    .shadow-sm, .shadow-xl { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+    /* Forzar fondos oscuros en impresión */
+    .bg-slate-900 { background-color: #0f172a !important; color: white !important; }
+    .bg-indigo-600 { background-color: #4f46e5 !important; color: white !important; }
+  }
+</style>
+
+<div class="max-w-4xl mx-auto space-y-8 pb-12">
+  
+
+  <div class="fade-up delay-100 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm flex flex-col md:flex-row gap-10 items-center print-break-inside-avoid relative overflow-hidden">
+    <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+
+    <div class="flex-shrink-0 relative h-40 w-40">
+      <svg class="h-full w-full transform -rotate-90">
+        <circle cx="80" cy="80" r="70" stroke="#f1f5f9" stroke-width="12" fill="transparent" />
+        <circle cx="80" cy="80" r="70" stroke="#4f46e5" stroke-width="12" fill="transparent" 
+          stroke-dasharray="439.8" 
+          stroke-dashoffset="{{ 439.8 - (439.8 * total_pct / 100) }}" 
+          stroke-linecap="round" 
+          class="transition-all duration-1000 ease-out" />
       </svg>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
-        <span class="text-3xl font-black text-slate-800">{{ total_pct }}%</span>
+        <span class="text-4xl font-black text-slate-900">{{ total_pct }}<span class="text-xl align-top text-slate-400">%</span></span>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Índice Global</span>
       </div>
     </div>
-    <div class="text-center md:text-left">
-      <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Resultado del Diagnóstico</h1>
-      <p class="text-slate-500 mt-2 max-w-lg leading-relaxed">{{ interpretation.message }}</p>
-      <div class="mt-4 inline-block bg-indigo-100 text-indigo-700 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+
+    <div class="text-center md:text-left relative z-10 flex-1">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold uppercase tracking-widest mb-3">
+        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
         Nivel: {{ interpretation.level }}
       </div>
+      <h2 class="text-2xl font-bold text-slate-900 mb-3">Interpretación Ejecutiva</h2>
+      <p class="text-slate-600 leading-relaxed text-sm md:text-base border-l-4 border-indigo-200 pl-4">
+        {{ interpretation.message }}
+      </p>
     </div>
   </div>
 
-  <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-    <h3 class="text-lg font-bold text-slate-800 mb-8 text-center uppercase tracking-widest text-xs">Análisis de Capacidades Organizacionales</h3>
-    <div class="flex justify-center">
-      <svg width="560" height="320" viewBox="0 0 560 320" class="max-w-full">
+  <div class="fade-up delay-200 bg-slate-50 rounded-3xl border border-slate-200 p-6 md:p-10 shadow-sm print-break-inside-avoid">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div>
+        <h3 class="text-lg font-bold text-slate-900">Análisis de Capacidades</h3>
+        <p class="text-xs text-slate-500">Comparativa: Tu Empresa vs. Estándar Ideal Consilium</p>
+      </div>
+      <div class="flex gap-4 text-xs font-semibold bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 bg-indigo-600 rounded-sm"></span>
+          <span class="text-slate-700">Tu Resultado</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="h-2.5 w-2.5 bg-emerald-400 rounded-sm border border-emerald-500 border-dashed"></span>
+          <span class="text-slate-500">Referencia Ideal</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-center py-4">
+      <svg width="600" height="350" viewBox="0 0 560 320" class="w-full max-w-lg overflow-visible drop-shadow-xl">
         <g transform="translate(280, 160)">
+          <circle cx="0" cy="0" r="140" fill="white" />
+          
           <g transform="translate({{ -radar.cx }}, {{ -radar.cy }})">
             {% for ring in radar.rings %}
-              <polygon points="{{ ring }}" fill="none" stroke="#e2e8f0" stroke-width="1" />
+              <polygon points="{{ ring }}" fill="none" stroke="#e2e8f0" stroke-width="1.5" />
             {% endfor %}
             {% for line in radar.axis_lines %}
-              <line x1="{{ radar.cx }}" y1="{{ radar.cy }}" x2="{{ line.x2 }}" y2="{{ line.y2 }}" stroke="#e2e8f0" stroke-width="1" />
+              <line x1="{{ radar.cx }}" y1="{{ radar.cy }}" x2="{{ line.x2 }}" y2="{{ line.y2 }}" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 2" />
             {% endfor %}
-            <polygon points="{{ radar.outer_points }}" fill="rgba(16, 185, 129, 0.08)" stroke="#10b981" stroke-width="2" stroke-dasharray="6 4" />
-            <polygon points="{{ radar.polygon_points }}" fill="rgba(79, 70, 229, 0.1)" stroke="#4f46e5" stroke-width="3" />
+            
+            <polygon points="{{ radar.outer_points }}" fill="rgba(16, 185, 129, 0.05)" stroke="#10b981" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round" stroke-linejoin="round" />
+            
+            <polygon points="{{ radar.polygon_points }}" fill="rgba(79, 70, 229, 0.2)" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            
             {% for label in radar.labels %}
-              <text x="{{ label.x }}" y="{{ label.y }}" text-anchor="{{ label.anchor }}" font-size="10" font-weight="700" fill="#64748b" class="uppercase">
+              <text x="{{ label.x }}" y="{{ label.y }}" text-anchor="{{ label.anchor }}" font-size="9" font-weight="700" fill="#475569" class="uppercase tracking-wide font-sans">
                 {{ label.text }}
               </text>
             {% endfor %}
@@ -46,74 +101,93 @@
         </g>
       </svg>
     </div>
-    <div class="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-slate-600">
-      <div class="flex items-center gap-2">
-        <span class="h-2 w-6 bg-indigo-600 rounded-full"></span>
-        <span>Situación actual</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="h-2 w-6 bg-emerald-500 rounded-full"></span>
-        <span>Con PlanetaFiscal (referencia ideal)</span>
-      </div>
-    </div>
   </div>
 
   {% if ai %}
-  <div class="space-y-6">
-    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-      <span class="h-2 w-6 bg-indigo-600 rounded-full"></span>
-      Recomendación PlanetaFiscal
-    </h3>
-    <div class="grid gap-6 md:grid-cols-2">
-      <div class="bg-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-100">
-        <h4 class="text-lg font-bold mb-3">{{ ai.titulo }}</h4>
-        <p class="text-indigo-100 text-sm leading-relaxed">{{ ai.diagnostico_en_una_frase }}</p>
+  <div class="fade-up delay-300 space-y-6 mt-12">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="p-2 bg-slate-900 rounded-lg text-white">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900">Plan de Acción Recomendado</h3>
+    </div>
 
-        <div class="mt-5 rounded-2xl bg-indigo-500/40 p-4 space-y-3">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-indigo-100">Lo que te está doliendo</p>
-            <p class="mt-2 text-indigo-50 text-sm font-semibold leading-relaxed">{{ ai.lo_que_te_esta_doliendo }}</p>
+    <div class="grid gap-0 md:grid-cols-2 rounded-3xl overflow-hidden border border-slate-200 shadow-lg print-break-inside-avoid">
+      
+      <div class="bg-slate-900 p-8 md:p-10 text-white flex flex-col justify-between">
+        <div>
+          <span class="inline-block px-2 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded text-[10px] font-bold uppercase tracking-widest text-indigo-300 mb-4">
+            Diagnóstico
+          </span>
+          <h4 class="text-2xl font-bold mb-4 leading-tight">{{ ai.titulo }}</h4>
+          <p class="text-slate-300 text-sm leading-relaxed italic border-l-2 border-indigo-500 pl-3 mb-8">
+            "{{ ai.diagnostico_en_una_frase }}"
+          </p>
+
+          <div class="space-y-6">
+            <div class="relative pl-6">
+              <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-rose-500"></div>
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Punto de Dolor Identificado</p>
+              <p class="text-white text-sm font-medium">{{ ai.lo_que_te_esta_doliendo }}</p>
+            </div>
+            <div class="relative pl-6">
+              <div class="absolute left-0 top-1.5 w-2 h-2 rounded-full bg-orange-500"></div>
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Causa Raíz</p>
+              <p class="text-white text-sm font-medium">{{ ai.problema_principal }}</p>
+            </div>
           </div>
-          <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-indigo-100">Problema principal</p>
-            <p class="mt-2 text-indigo-50 text-sm font-semibold leading-relaxed">{{ ai.problema_principal }}</p>
-          </div>
+        </div>
+        
+        <div class="mt-8 pt-6 border-t border-slate-800">
+           <img src="{{ url_for('static', filename='logos/Consilium-rec.png') }}" class="h-6 opacity-30 grayscale invert" alt="Consilium AI">
         </div>
       </div>
 
-      <div class="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-        <h4 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Cómo te ayuda PlanetaFiscal</h4>
-        <p class="text-sm font-semibold text-slate-700 leading-relaxed">{{ ai.como_ayudamos_planetafiscal }}</p>
+      <div class="bg-white p-8 md:p-10 flex flex-col">
+        <span class="inline-block w-fit px-2 py-1 bg-emerald-50 border border-emerald-100 rounded text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-4">
+          Solución Propuesta
+        </span>
+        
+        <h4 class="text-sm font-bold text-slate-900 uppercase tracking-widest mb-3">Estrategia Consilium</h4>
+        <p class="text-slate-600 text-sm leading-relaxed mb-6">{{ ai.como_ayudamos_consilium }}</p>
 
-        <div class="mt-5">
-          <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Qué incluye</p>
-          <ul class="space-y-2">
-            {% for item in ai.que_incluye_planetafiscal %}
-              <li class="text-sm font-semibold text-slate-700 flex items-start gap-3">
-                <span class="h-5 w-5 rounded bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0 text-[10px]">•</span>
-                {{ item }}
-              </li>
-            {% endfor %}
-          </ul>
+        <div class="space-y-6">
+          <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+              Alcance
+            </p>
+            <ul class="space-y-2.5">
+              {% for item in ai.que_incluye_consilium %}
+                <li class="text-sm text-slate-700 flex items-start gap-2.5">
+                  <svg class="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  <span>{{ item }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+               Impacto Esperado
+            </p>
+            <ul class="space-y-2">
+              {% for item in ai.beneficios_para_ti %}
+                <li class="text-sm font-medium text-slate-800 flex items-start gap-2.5">
+                  <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0"></div>
+                  {{ item }}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
         </div>
 
-        <div class="mt-5">
-          <p class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Beneficios para ti</p>
-          <ul class="space-y-2">
-            {% for item in ai.beneficios_para_ti %}
-              <li class="text-sm font-semibold text-slate-700 flex items-start gap-3">
-                <span class="h-5 w-5 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 text-[10px]">✓</span>
-                {{ item }}
-              </li>
-            {% endfor %}
-          </ul>
-        </div>
-
-        <div class="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4">
-          <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Siguiente paso</p>
-          <p class="mt-2 text-sm font-semibold text-slate-800 leading-relaxed">
-            Hablemos sobre cómo podemos ayudarte a implementar estas soluciones.
-          </p>
+        <div class="mt-auto pt-8">
+           <a href="#" class="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-center text-sm font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200 no-print">
+             Agendar sesión de implementación
+           </a>
+           <p class="text-xs text-center text-slate-400 mt-3 no-print">Sin compromiso. 30 minutos de asesoría gratuita.</p>
         </div>
       </div>
     </div>
@@ -121,25 +195,32 @@
   {% endif %}
 
   {% if (not ai) and ai_enabled %}
-  <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-5">
-    <p class="font-semibold">No se pudo generar el plan con IA.</p>
-    <p class="text-sm mt-1">{{ ai_error or "Inténtalo de nuevo en unos minutos o revisa tu `OPENAI_API_KEY`." }}</p>
-    {% if ai_error_detail %}
-      <details class="mt-3 text-xs">
-        <summary class="cursor-pointer select-none font-semibold">Detalle (debug)</summary>
-        <pre class="mt-2 whitespace-pre-wrap break-words">{{ ai_error_detail }}</pre>
-      </details>
-    {% endif %}
+  <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-6 flex gap-4 items-start no-print">
+    <svg class="w-6 h-6 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+    <div>
+      <p class="font-bold">El análisis detallado no está disponible en este momento.</p>
+      <p class="text-sm mt-1 text-amber-800 opacity-90">{{ ai_error or "Por favor, contacta a soporte o intenta generar el diagnóstico nuevamente." }}</p>
+      {% if ai_error_detail %}
+        <details class="mt-3 text-xs border-t border-amber-200 pt-2">
+          <summary class="cursor-pointer font-semibold hover:text-amber-700">Ver detalles técnicos</summary>
+          <pre class="mt-2 whitespace-pre-wrap font-mono bg-amber-100 p-2 rounded">{{ ai_error_detail }}</pre>
+        </details>
+      {% endif %}
+    </div>
   </div>
   {% endif %}
 
-  <div class="flex flex-col sm:flex-row gap-4 justify-center py-6">
-    <button onclick="window.print()" class="rounded-xl border border-slate-300 bg-white px-8 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all">
-      Descargar en PDF
-    </button>
-    <a href="{{ url_for('reset') }}" class="rounded-xl bg-indigo-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all text-center">
-      Nuevo Diagnóstico
+  <div class="no-print flex justify-center pt-8 pb-4">
+    <a href="{{ url_for('reset') }}" class="text-slate-400 text-sm font-semibold hover:text-slate-600 transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+      Comenzar un nuevo diagnóstico
     </a>
   </div>
+
 </div>
+
+<script>
+  // Poner fecha actual automáticamente
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+</script>
 {% endblock %}

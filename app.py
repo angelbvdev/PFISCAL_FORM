@@ -210,9 +210,13 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index():
+        return render_template("welcome.html")
+
+    @app.get("/cuestionario")
+    def cuestionario():
         last_answers = session.get("last_answers", {})
         return render_template(
-            "index.html",
+            "quiz.html",
             questions=QUESTIONS,
             scale=SCALE,
             last_answers=last_answers,
@@ -223,7 +227,7 @@ def create_app() -> Flask:
         answers = _parse_answers(request.form)
         if isinstance(answers, str):
             session["flash_error"] = answers
-            return redirect(url_for("index"))
+            return redirect(url_for("cuestionario"))
 
         session["last_answers"] = answers
         total, total_pct, by_category = _compute_scores(answers)
@@ -236,6 +240,7 @@ def create_app() -> Flask:
             timeout_seconds=app.config["OPENAI_TIMEOUT_SECONDS"],
             total_pct=total_pct,
             by_category=by_category,
+            answers=answers,
             debug=bool(app.debug),
         )
 
@@ -251,7 +256,16 @@ def create_app() -> Flask:
             ai_error=ai_error,
             ai_error_detail=ai_error_detail,
             ai_enabled=bool(app.config["OPENAI_API_KEY"]),
-            interpretation=_interpretation(total_pct),
+            interpretation=_interpretation(
+                total_pct,
+                by_category=by_category,
+                api_key=app.config["OPENAI_API_KEY"],
+                base_url=app.config["OPENAI_BASE_URL"],
+                model=app.config["OPENAI_MODEL"],
+                api_mode=app.config["OPENAI_API_MODE"],
+                timeout_seconds=app.config["OPENAI_TIMEOUT_SECONDS"],
+                debug=bool(app.debug),
+            ),
         )
 
     @app.get("/reset")
@@ -302,21 +316,130 @@ def _compute_scores(answers: Dict[str, int]) -> Tuple[int, int, Dict[str, Dict[s
     return total_points, total_pct, by_category_summary
 
 
-def _interpretation(total_pct: int) -> Dict[str, str]:
+def _interpretation_level(total_pct: int) -> str:
     if total_pct >= 80:
-        return {
-            "level": "Alto",
-            "message": "Tu empresa muestra bases sólidas. Prioriza mantener disciplina de seguimiento y mejorar con datos.",
-        }
+        return "Alto"
     if total_pct >= 60:
-        return {
-            "level": "Medio",
-            "message": "Hay avances, pero existen brechas. Enfócate en 2–3 áreas con menor puntaje para crear un plan trimestral.",
-        }
-    return {
-        "level": "Bajo",
-        "message": "Hay oportunidades importantes. Empieza por clarificar estrategia, ordenar finanzas y definir procesos mínimos.",
+        return "Medio"
+    return "Bajo"
+
+
+def _interpretation_static(total_pct: int) -> Dict[str, str]:
+    level = _interpretation_level(total_pct)
+    if level == "Alto":
+        message = (
+            "Tu empresa muestra bases sólidas. Prioriza mantener disciplina de seguimiento y mejorar con datos."
+        )
+    elif level == "Medio":
+        message = (
+            "Hay avances, pero existen brechas. Enfócate en 2–3 áreas con menor puntaje para crear un plan trimestral."
+        )
+    else:
+        message = "Hay oportunidades importantes. Empieza por clarificar estrategia, ordenar finanzas y definir procesos mínimos."
+    return {"level": level, "message": message}
+
+
+def _interpretation(
+    total_pct: int,
+    *,
+    by_category: Dict[str, Dict[str, int]] | None = None,
+    api_key: str,
+    base_url: str,
+    model: str,
+    api_mode: str,
+    timeout_seconds: int,
+    debug: bool,
+) -> Dict[str, str]:
+    static = _interpretation_static(total_pct)
+    if not api_key:
+        return static
+
+    by_category = by_category or {}
+    try:
+        msg, err = _maybe_ai_interpretation_message(
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+            api_mode=api_mode,
+            timeout_seconds=timeout_seconds,
+            total_pct=total_pct,
+            level=static["level"],
+            by_category=by_category,
+        )
+    except Exception as e:
+        if debug:
+            session["flash_error"] = f"No se pudo generar interpretación con IA ({type(e).__name__})."
+        return static
+
+    if msg:
+        return {"level": static["level"], "message": msg}
+    if err and debug:
+        session["flash_error"] = f"No se pudo generar interpretación con IA ({err})."
+    return static
+
+
+def _maybe_ai_interpretation_message(
+    *,
+    api_key: str,
+    base_url: str,
+    model: str,
+    api_mode: str,
+    timeout_seconds: int,
+    total_pct: int,
+    level: str,
+    by_category: Dict[str, Dict[str, int]],
+) -> Tuple[str | None, str | None]:
+    payload = {
+        "total_pct": int(total_pct),
+        "level": str(level),
+        "by_category": {k: {"pct": int(v.get("pct", 0))} for k, v in by_category.items()},
     }
+
+    cache_key = f"ai_interp_v1:{_stable_hash(payload)}"
+    cached = session.get(cache_key)
+    if isinstance(cached, str) and cached.strip():
+        return cached.strip(), None
+
+    system = (
+        "Eres un consultor de Consilium. "
+        "Escribes interpretaciones ejecutivas breves, claras y accionables. "
+        "Responde en español. No inventes datos."
+    )
+    user = (
+        "Genera una interpretación ejecutiva (1–2 frases) del prediagnóstico. "
+        "Debe sonar consultiva y concreta, sin alarmismo, sin promesas, y sin pasos. "
+        "No menciones 'IA'.\n\n"
+        "Devuelve SOLO un JSON válido (sin markdown) con esta forma exacta:\n"
+        '{ "message": string }\n\n'
+        "Contexto:\n"
+        f"- Índice global: {int(total_pct)}%\n"
+        f"- Nivel: {level}\n"
+        f"- Porcentaje por área (si existe): {json.dumps(payload['by_category'], ensure_ascii=False)}\n"
+    )
+
+    raw_text, err = _openai_text(
+        api_key=api_key,
+        base_url=base_url,
+        model=model,
+        api_mode=api_mode,
+        system=system,
+        user=user,
+        timeout_seconds=timeout_seconds,
+    )
+    if not raw_text:
+        return None, (err or "Sin contenido de salida desde OpenAI.")
+
+    parsed = _extract_json_object(raw_text)
+    if not isinstance(parsed, dict):
+        return None, "No se pudo parsear JSON desde la respuesta del modelo."
+
+    msg = parsed.get("message")
+    msg = msg.strip() if isinstance(msg, str) else ""
+    if not msg:
+        return None, "La respuesta JSON no incluye 'message'."
+
+    session[cache_key] = msg
+    return msg, None
 
 
 def _maybe_ai_result(
@@ -328,18 +451,82 @@ def _maybe_ai_result(
     timeout_seconds: int,
     total_pct: int,
     by_category: Dict[str, Dict[str, int]],
+    answers: Dict[str, int],
     debug: bool,
 ) -> Tuple[Dict[str, object] | None, str | None, str | None]:
     if not api_key:
         return None, None, None
 
+    categories_ranked = sorted(
+        (
+            {
+                "category": k,
+                "points": int(v["points"]),
+                "pct": int(v["pct"]),
+                "max": int(v["max"]),
+            }
+            for k, v in by_category.items()
+        ),
+        key=lambda x: x["pct"],
+    )
+
+    questions_payload: List[Dict[str, object]] = []
+    for q in QUESTIONS:
+        questions_payload.append(
+            {
+                "id": q.id,
+                "category": q.category,
+                "text": q.text,
+                "value": int(answers.get(q.id, 0)),
+            }
+        )
+    weakest_questions_full = sorted(questions_payload, key=lambda x: x["value"])[:5]
+    strongest_questions_full = sorted(questions_payload, key=lambda x: x["value"], reverse=True)[:5]
+
+    def drop_value(items: List[Dict[str, object]]) -> List[Dict[str, object]]:
+        out: List[Dict[str, object]] = []
+        for it in items:
+            out.append({"id": it.get("id", ""), "category": it.get("category", ""), "text": it.get("text", "")})
+        return out
+
+    weakest_questions = drop_value(weakest_questions_full)
+    strongest_questions = drop_value(strongest_questions_full)
+
     payload = {
+        "brand": {
+            "company": "Consilium",
+            "service": "Consilium",
+            "positioning": (
+                "Acompañamiento contable y fiscal para dueños de PyMEs: orden, cumplimiento y claridad para decidir."
+            ),
+        },
         "total_pct": total_pct,
+        "interpretation": _interpretation_static(total_pct),
         "by_category": {
             k: {"points": int(v["points"]), "pct": int(v["pct"]), "max": int(v["max"])}
             for k, v in by_category.items()
         },
-        "scale": {"min": 1, "max": 5, "questions_per_area": 5, "max_points_per_area": 25},
+        "categories_ranked_low_to_high": categories_ranked,
+        "weakest_areas": categories_ranked[:2],
+        "strongest_areas": sorted(categories_ranked, key=lambda x: x["pct"], reverse=True)[:2],
+        "questions": {
+            "weakest_5": weakest_questions,
+            "strongest_5": strongest_questions,
+        },
+        "category_definitions": {
+            "Dirección y Estrategia": "Claridad de rumbo, objetivos, seguimiento y delegación.",
+            "Finanzas": "Contabilidad al día, costos, márgenes, flujo de efectivo, presupuesto y control.",
+            "Operaciones / Procesos": "Procesos definidos, estándares, medición e iniciativas de mejora.",
+            "Comercial (Ventas / Marketing)": "Prospección, conversión, seguimiento y consistencia comercial.",
+            "RH (Personas y Cultura)": "Roles claros, contratación/inducción, desempeño y clima.",
+        },
+        "scale": {
+            "min": 1,
+            "max": 5,
+            "labels": [{"value": v, "label": lbl} for v, lbl in SCALE],
+            "questions_per_area": 5,
+            "max_points_per_area": 25,
+        },
         "areas_expected": [
             "Dirección y Estrategia",
             "Finanzas",
@@ -349,7 +536,7 @@ def _maybe_ai_result(
         ],
     }
 
-    cache_key = f"ai_v4:{_stable_hash(payload)}"
+    cache_key = f"ai_v5:{_stable_hash(payload)}"
     cached = session.get(cache_key)
     if isinstance(cached, dict):
         return cached, None, None
@@ -386,36 +573,46 @@ def _generate_ai_insights(
     scoring_payload: Dict[str, object],
 ) -> Tuple[Dict[str, object] | None, str | None]:
     system = (
-        "Eres un consultor de mejora empresarial y ventas consultivas de PlanetaFiscal. "
+        "Eres un consultor de mejora empresarial y ventas consultivas de Consilium. "
+        "Tu prioridad es ser específico: decir qué falta, dónde está el riesgo y cómo lo resolvemos. "
         "Responde en español, con empatía y claridad, basado SOLO en el scoring. "
         "No inventes datos. No prometas resultados garantizados. No uses lenguaje legal."
     )
     user = (
         "Con base en este prediagnóstico, enfócate en vender el servicio: "
         "nombra el dolor (lo que más les está doliendo), el problema principal (brecha más crítica), "
-        "y cómo PlanetaFiscal los ayuda. NO des un plan de acción todavía.\n\n"
+        "y cómo Consilium los ayuda. NO des un plan de acción todavía.\n\n"
         "Devuelve SOLO un JSON válido (sin markdown) con esta forma exacta:\n"
         "{\n"
         '  "titulo": string,\n'
         '  "diagnostico_en_una_frase": string,\n'
         '  "problema_principal": string,\n'
         '  "lo_que_te_esta_doliendo": string,\n'
-        '  "como_ayudamos_planetafiscal": string,\n'
-        '  "que_incluye_planetafiscal": [string, string, string],\n'
+        '  "como_ayudamos_consilium": string,\n'
+        '  "que_incluye_consilium": [string, string, string],\n'
         '  "beneficios_para_ti": [string, string, string]\n'
         "}\n"
         "Reglas:\n"
         "- Máximo 1–2 frases por campo string.\n"
         "- Máximo 1 frase por item en listas.\n"
-        "- Usa un tono cercano y consultivo (que suene a que entendemos su dolor).\n"
+        "- Usa un tono cercano y consultivo (que suene a que entendemos su dolor y el costo del desorden).\n"
         "- Prioriza las 2 áreas con menor % para describir el problema.\n"
         "- Si hay empate, prioriza Finanzas y Operaciones.\n"
+        "- NO incluyas puntajes 1–5 ni anotaciones tipo \"(1)\"; solo porcentajes (%).\n"
         "- NO incluyas pasos, cronogramas, ni planes de 30/90 días.\n"
         "- NO uses markdown.\n\n"
-        "Qué vende PlanetaFiscal (ajusta al scoring):\n"
+        "Hazlo preciso (obligatorio):\n"
+        '- En "problema_principal", menciona explícitamente las 2 áreas más bajas con su % y 1–2 de las preguntas más bajas (usa su texto tal cual o muy cercano).\n'
+        '- En "lo_que_te_esta_doliendo", describe 2 consecuencias concretas de esas brechas (ej.: decisiones a ciegas, fugas de efectivo, estrés por cierres/obligaciones, riesgo de recargos), sin alarmismo.\n'
+        '- En "como_ayudamos_consilium", conecta directamente esas brechas con 2–3 acciones/entregables concretos (ej.: contabilidad al día y conciliaciones; calendario de obligaciones; reportes mensuales de resultados/flujo; controles mínimos de facturación/gastos). No uses palabras genéricas como "optimizar" o "mejorar" sin explicar qué entregamos.\n'
+        '- En "que_incluye_consilium", lista 3 entregables específicos (no conceptos abstractos).\n\n'
+        "Qué vende Consilium (ajusta al scoring):\n"
         "- Orden contable y fiscal + cumplimiento.\n"
         "- Reportes claros (estado de resultados, flujo, indicadores) para decidir.\n"
         "- Controles y procesos mínimos para que el negocio no dependa del caos.\n\n"
+        "Cómo interpretar el scoring:\n"
+        "- Las áreas y preguntas más bajas representan fricción, riesgo y decisiones a ciegas.\n"
+        "- Conecta el problema con consecuencias reales (estrés, falta de control, multas/recargos, fugas de efectivo) sin alarmismo.\n\n"
         f"SCORING:\n{json.dumps(scoring_payload, ensure_ascii=False)}"
     )
 
@@ -671,8 +868,8 @@ def _normalize_ai_output(obj: Dict[str, object]) -> Dict[str, object] | None:
         "diagnostico_en_una_frase",
         "problema_principal",
         "lo_que_te_esta_doliendo",
-        "como_ayudamos_planetafiscal",
-        "que_incluye_planetafiscal",
+        "como_ayudamos_consilium",
+        "que_incluye_consilium",
         "beneficios_para_ti",
     ]
     if any(k not in obj for k in required):
@@ -696,8 +893,8 @@ def _normalize_ai_output(obj: Dict[str, object]) -> Dict[str, object] | None:
         "diagnostico_en_una_frase": as_str(obj.get("diagnostico_en_una_frase")),
         "problema_principal": as_str(obj.get("problema_principal")),
         "lo_que_te_esta_doliendo": as_str(obj.get("lo_que_te_esta_doliendo")),
-        "como_ayudamos_planetafiscal": as_str(obj.get("como_ayudamos_planetafiscal")),
-        "que_incluye_planetafiscal": as_list(obj.get("que_incluye_planetafiscal")),
+        "como_ayudamos_consilium": as_str(obj.get("como_ayudamos_consilium")),
+        "que_incluye_consilium": as_list(obj.get("que_incluye_consilium")),
         "beneficios_para_ti": as_list(obj.get("beneficios_para_ti")),
         "meta": {"model": str(obj.get("model", ""))[:64], "ts": int(time.time())},
     }
@@ -706,8 +903,8 @@ def _normalize_ai_output(obj: Dict[str, object]) -> Dict[str, object] | None:
         or not normalized["diagnostico_en_una_frase"]
         or not normalized["problema_principal"]
         or not normalized["lo_que_te_esta_doliendo"]
-        or not normalized["como_ayudamos_planetafiscal"]
-        or not normalized["que_incluye_planetafiscal"]
+        or not normalized["como_ayudamos_consilium"]
+        or not normalized["que_incluye_consilium"]
         or not normalized["beneficios_para_ti"]
     ):
         return None

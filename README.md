@@ -56,7 +56,7 @@ Notas:
 
 ## Diagnóstico de venta con OpenAI (opcional)
 
-Si defines `OPENAI_API_KEY`, la vista de resultados intentará generar un mensaje comercial basado en el scoring: identifica el problema principal, describe el dolor y explica cómo PlanetaFiscal puede ayudar.
+Si defines `OPENAI_API_KEY`, la vista de resultados intentará generar un mensaje comercial basado en el scoring: identifica el problema principal, describe el dolor y explica cómo Consilium puede ayudar.
 
 Ejemplo de .env
 
