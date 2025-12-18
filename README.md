@@ -49,10 +49,6 @@ Notas:
 - El contenedor (sin compose) usa `gunicorn` por defecto (ver `Dockerfile`).
 - Para producción, define `SECRET_KEY` en `.env`.
 
-## Configuración (.env)
-
-La app lee variables desde `.env` automáticamente al arrancar (sin dependencias extra). Puedes partir de `.env.example`.
-
 ## Estilos (Tailwind v4)
 
 - La app carga únicamente `static/output.css` (ver `templates/base.html`).
