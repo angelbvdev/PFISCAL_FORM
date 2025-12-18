@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="max-w-2xl mx-auto">
+  <div class="mb-12">
+    <div class="flex justify-between items-end mb-3">
+      <div>
+        <h3 id="progress-text" class="text-sm font-bold text-slate-800">Pregunta 1 de {{ questions|length }}</h3>
+        <p class="text-xs text-slate-500 font-medium">Completa el diagnóstico para recibir tus recomendaciones</p>
+      </div>
+      <span id="progress-percent" class="text-lg font-black text-indigo-600">0%</span>
+    </div>
+    <div class="h-2 w-full rounded-full bg-slate-200 overflow-hidden shadow-inner">
+      <div id="progress-bar" class="h-full bg-indigo-600 transition-all duration-500 ease-out" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <form id="quiz-form" method="post" action="{{ url_for('resultado') }}">
+    {% for q in questions %}
+    <div class="question-step hidden space-y-8" data-step="{{ loop.index0 }}">
+      <div>
+        <span class="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2 block">{{ q.category }}</span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight">
+          {{ q.text }}
+        </h2>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3">
+        {% for value, label in scale %}
+          <label class="relative flex cursor-pointer items-center group">
+            <input
+              type="radio"
+              name="{{ q.id }}"
+              value="{{ value }}"
+              required
+              class="peer sr-only radio-option"
+            />
+            <div class="w-full flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white p-5 transition-all peer-checked:border-indigo-600 peer-checked:bg-indigo-50 hover:border-slate-300 hover:bg-slate-50 shadow-sm group-active:scale-[0.98]">
+              <div class="flex items-center gap-4">
+                <span class="flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-200 bg-white text-sm font-bold text-slate-500 peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white transition-colors">
+                  {{ value }}
+                </span>
+                <span class="text-sm font-semibold text-slate-700">{{ label }}</span>
+              </div>
+              <div class="h-4 w-4 rounded-full border-2 border-slate-300 peer-checked:border-indigo-600 peer-checked:bg-indigo-600"></div>
+            </div>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="mt-12 flex items-center justify-between pt-8 border-t border-slate-200">
+      <button type="button" id="prev-btn" class="invisible font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2">
+        ← Anterior
+      </button>
+
+      <div class="flex gap-4">
+        <button type="button" id="next-btn" class="hidden rounded-xl bg-slate-800 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-900 active:scale-95 disabled:opacity-30">
+          Siguiente
+        </button>
+        <button type="submit" id="submit-btn" class="hidden rounded-xl bg-indigo-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95">
+          Obtener Resultado
+        </button>
+      </div>
+    </div>
+  </form>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const steps = document.querySelectorAll('.question-step');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const progressPercent = document.getElementById('progress-percent');
+    
+    let currentStep = 0;
+    const totalSteps = steps.length;
+
+    function updateStep() {
+      steps.forEach((step, index) => step.classList.toggle('hidden', index !== currentStep));
+      prevBtn.classList.toggle('invisible', currentStep === 0);
+      
+      if (currentStep === totalSteps - 1) {
+        nextBtn.classList.add('hidden');
+        submitBtn.classList.remove('hidden');
+      } else {
+        nextBtn.classList.remove('hidden');
+        submitBtn.classList.add('hidden');
+      }
+
+      const percent = Math.round(((currentStep + 1) / totalSteps) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressText.innerText = `Pregunta ${currentStep + 1} de ${totalSteps}`;
+      progressPercent.innerText = `${percent}%`;
+    }
+
+    nextBtn.addEventListener('click', () => { if (currentStep < totalSteps - 1) { currentStep++; updateStep(); } });
+    prevBtn.addEventListener('click', () => { if (currentStep > 0) { currentStep--; updateStep(); } });
+
+    document.querySelectorAll('.radio-option').forEach(radio => {
+      radio.addEventListener('change', () => {
+        setTimeout(() => { if(currentStep < totalSteps - 1) { currentStep++; updateStep(); } }, 400);
+      });
+    });
+
+    updateStep();
+  });
+</script>
+{% endblock %}
